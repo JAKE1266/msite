@@ -11,11 +11,12 @@
 
 from __future__ import annotations
 
+import html
 import re
 import shutil
 from pathlib import Path
 
-from mdown import to_html
+from msite._vendor.mdown import to_html
 
 _MD_SUFFIX = ".md"
 _H1_RE = re.compile(r"<h1>(.*?)</h1>", re.S)
@@ -79,7 +80,7 @@ def _collect_md_files(source: Path, out_dir: Path) -> list:
 def _first_title(fragment: str, fallback: str) -> str:
     match = _H1_RE.search(fragment)
     if match:
-        return _TAG_RE.sub("", match.group(1)).strip() or fallback
+        return html.unescape(_TAG_RE.sub("", match.group(1))).strip() or fallback
     return fallback
 
 
@@ -96,8 +97,9 @@ def _nav_html(pages: list, titles: dict, current_rel: str, site_title: str) -> s
         href = rel.with_suffix(".html").as_posix()
         target = prefix + href
         active = ' class="active"' if rel.as_posix() == current_rel else ""
-        links.append(f'<a href="{target}"{active}>{titles[rel.as_posix()]}</a>')
-    return (f"<aside><h1>{site_title}</h1><nav>" + "".join(links)
+        links.append(f'<a href="{html.escape(target, quote=True)}"{active}>'
+                     f'{html.escape(titles[rel.as_posix()])}</a>')
+    return (f"<aside><h1>{html.escape(site_title)}</h1><nav>" + "".join(links)
             + "</nav></aside>")
 
 
@@ -112,9 +114,10 @@ def _page(fragment: str, nav: str, theme: str, title: str) -> str:
 
 
 def _index_page(pages: list, titles: dict, nav: str, theme: str, title: str) -> str:
-    links = "".join(f'<li><a href="{rel.with_suffix(".html").as_posix()}">'
-                    f'{titles[rel.as_posix()]}</a></li>' for rel in pages)
-    fragment = f"<h1>{title}</h1>\n<ul>{links}</ul>"
+    links = "".join(
+        f'<li><a href="{html.escape(rel.with_suffix(".html").as_posix(), quote=True)}">'
+        f'{html.escape(titles[rel.as_posix()])}</a></li>' for rel in pages)
+    fragment = f"<h1>{html.escape(title)}</h1>\n<ul>{links}</ul>"
     return _page(fragment, nav, theme, title)
 
 

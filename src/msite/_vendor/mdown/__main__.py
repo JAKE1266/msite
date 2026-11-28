@@ -2,7 +2,7 @@
 
 import sys
 
-from mdown.cli import main
+from msite._vendor.mdown.cli import main
 
 if __name__ == "__main__":
     sys.exit(main())

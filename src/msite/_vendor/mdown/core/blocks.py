@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import re
 
-from mdown.core.inline import render_inline
+from msite._vendor.mdown.core.inline import render_inline
 
 _HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)(?:\s+#+\s*)?$")
 _FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})\s*([\w+-]*)\s*$")

@@ -17,6 +17,14 @@ from pathlib import Path
 from . import __version__
 from .core.blocks import to_html
 
+
+def _configure_standard_streams() -> None:
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="replace")
+
+
 _THEMES = {
     "dark": (
         "body{margin:0 auto;max-width:820px;padding:40px 20px 80px;line-height:1.75;"
@@ -98,7 +106,7 @@ def cmd_convert(args) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="mdown",
-        description="mdown —— 零依赖的 Markdown → HTML 转换器(自研解析器,纯标准库)",
+        description="mdown —— 零运行时依赖的 Markdown → HTML 转换器(自研解析器,纯标准库)",
     )
     parser.add_argument("--version", action="version", version=f"mdown {__version__}")
     parser.add_argument("input", help="输入的 Markdown 文件")
@@ -112,6 +120,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv=None) -> int:
+    _configure_standard_streams()
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
