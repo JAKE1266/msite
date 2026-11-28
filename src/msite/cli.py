@@ -4,7 +4,7 @@
 
     msite docs/                          # 构建 docs/ → site/
     msite docs/ -o public --theme light
-    msite docs/ --clean                  # 先清空输出目录再构建
+    msite docs/ --clean                  # 转换成功后清空输出目录再构建
 """
 
 from __future__ import annotations
@@ -15,6 +15,13 @@ import sys
 
 from . import __version__
 from .core.builder import build_site
+
+
+def _configure_standard_streams() -> None:
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="replace")
 
 
 def cmd_build(args) -> int:
@@ -48,12 +55,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("-o", "--output", default="site", help="输出目录(默认 site/)")
     parser.add_argument("--theme", choices=("dark", "light"), default="dark", help="主题(默认 dark)")
     parser.add_argument("--title", default=None, help="站点名(默认源目录名)")
-    parser.add_argument("--clean", action="store_true", help="构建前清空输出目录")
+    parser.add_argument("--clean", action="store_true", help="转换成功后清空输出目录")
     parser.add_argument("--json", action="store_true", help="以 JSON 输出构建报告")
     return parser
 
 
 def main(argv=None) -> int:
+    _configure_standard_streams()
     parser = build_parser()
     args = parser.parse_args(argv)
     try:

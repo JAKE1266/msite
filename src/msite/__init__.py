@@ -9,6 +9,6 @@
 
 from msite.core.builder import build_site
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 __all__ = ["build_site", "__version__"]

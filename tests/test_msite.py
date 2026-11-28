@@ -3,6 +3,9 @@
 import contextlib
 import io
 import json
+import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -103,6 +106,68 @@ class BuilderTest(TempDocs):
         with self.assertRaises(ValueError):
             build_site(empty, out=str(self.src / "site2"))
 
+    def test_output_equal_to_source_is_rejected_without_deletion(self):
+        sentinel = self.src / "sentinel.txt"
+        sentinel.write_text("keep", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "不能与源目录相同"):
+            self.build(out=str(self.src), clean=True)
+        self.assertEqual(sentinel.read_text(encoding="utf-8"), "keep")
+
+    def test_output_ancestor_is_rejected_without_deletion(self):
+        sentinel = self.src / "sentinel.txt"
+        sentinel.write_text("keep", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "不能是源目录的祖先"):
+            self.build(out=str(self.src.parent), clean=True)
+        self.assertEqual(sentinel.read_text(encoding="utf-8"), "keep")
+
+    def test_output_file_is_rejected_without_overwrite(self):
+        target = self.src / "output"
+        target.write_text("keep", encoding="utf-8")
+        with self.assertRaises(NotADirectoryError):
+            self.build(out=str(target), clean=True)
+        self.assertEqual(target.read_text(encoding="utf-8"), "keep")
+
+    def test_empty_source_preserves_old_output_with_clean(self):
+        empty = self.src / "empty"
+        empty.mkdir()
+        out_dir = self.src.parent / "old-site"
+        out_dir.mkdir()
+        stale = out_dir / "stale.html"
+        stale.write_text("keep", encoding="utf-8")
+        with self.assertRaises(ValueError):
+            build_site(empty, out=str(out_dir), clean=True)
+        self.assertEqual(stale.read_text(encoding="utf-8"), "keep")
+
+    def test_conversion_failure_preserves_old_output_with_clean(self):
+        out_dir = self.src / "site"
+        out_dir.mkdir()
+        stale = out_dir / "stale.html"
+        stale.write_text("keep", encoding="utf-8")
+        (self.src / "broken.md").write_bytes(b"\xff")
+        with self.assertRaises(UnicodeDecodeError):
+            self.build(out=str(out_dir), clean=True)
+        self.assertEqual(stale.read_text(encoding="utf-8"), "keep")
+
+    def test_site_title_is_escaped_in_title_nav_and_index(self):
+        payload = '</title><script>alert("x")</script>'
+        (self.src / "index.md").unlink()
+        self.build(out=str(self.src / "site"), title=payload)
+        page = (self.src / "site" / "index.html").read_text(encoding="utf-8")
+        escaped = "&lt;/title&gt;&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;"
+        self.assertIn(f"<title>{escaped}</title>", page)
+        self.assertIn(f"<aside><h1>{escaped}</h1>", page)
+        self.assertNotIn("<script>", page)
+
+    def test_vendored_mdown_blocks_attribute_and_url_injection(self):
+        (self.src / "guide.md").write_text(
+            '# 安全\n\n[危险](`javascript:alert(1)`)\n\n'
+            '![a`x" onerror="alert(1)`](image.png)\n', encoding="utf-8")
+        self.build(out=str(self.src / "site"))
+        guide = (self.src / "site" / "guide.html").read_text(encoding="utf-8")
+        self.assertIn('<a href="#">危险</a>', guide)
+        self.assertIn('alt="ax&quot; onerror=&quot;alert(1)"', guide)
+        self.assertNotIn("javascript:", guide)
+
 
 class CliTest(TempDocs):
     def test_build_report(self):
@@ -132,6 +197,43 @@ class CliTest(TempDocs):
         code, _, err = self.run_cli(str(self.src / "ghost"))
         self.assertEqual(code, 1)
         self.assertIn("源目录不存在", err)
+
+
+class LegacyEncodingCliTest(unittest.TestCase):
+    def setUp(self):
+        self.env = {**os.environ, "PYTHONIOENCODING": "cp1252", "PYTHONUTF8": "0"}
+        self.cwd = Path(__file__).resolve().parents[1]
+
+    def test_utf8_help_under_legacy_encoding(self):
+        result = subprocess.run(
+            [sys.executable, "-m", "msite", "--help"],
+            cwd=self.cwd, capture_output=True, env=self.env,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr.decode("utf-8"))
+        self.assertIn("静态文档站", result.stdout.decode("utf-8"))
+
+    def test_utf8_json_stdout_under_legacy_encoding(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "中文文档"
+            source.mkdir()
+            (source / "index.md").write_text("# 中文标题\n\n正文。", encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, "-m", "msite", str(source), "-o",
+                 str(Path(tmp) / "站点"), "--title", "中文站点", "--json"],
+                cwd=self.cwd, capture_output=True, env=self.env,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr.decode("utf-8"))
+            report = json.loads(result.stdout.decode("utf-8"))
+            self.assertEqual(report["title"], "中文站点")
+            self.assertEqual(report["pages"], 1)
+
+    def test_utf8_error_stderr_under_legacy_encoding(self):
+        result = subprocess.run(
+            [sys.executable, "-m", "msite", str(self.cwd / "不存在")],
+            cwd=self.cwd, capture_output=True, env=self.env,
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("源目录不存在", result.stderr.decode("utf-8"))
 
 
 if __name__ == "__main__":

@@ -4,14 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "msite"
-version = "1.0.0"
-description = "msite —— 把一个目录的 Markdown 构建成带侧边导航与主题的静态文档站(转换内核为同系列 mdown)"
+version = "1.0.1"
+description = "msite —— 把一个目录的 Markdown 构建成带侧边导航与主题的静态文档站(私有内嵌 mdown)"
 readme = "README.md"
 requires-python = ">=3.9"
-dependencies = [
-    # 同系列 Markdown→HTML 转换器(纯标准库实现)
-    "mdown @ git+https://github.com/JAKE1266/mdown.git",
-]
+dependencies = []
 license = { text = "MIT" }
 authors = [{ name = "JAKE1266" }]
 keywords = ["markdown", "static-site", "documentation", "generator", "cli"]

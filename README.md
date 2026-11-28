@@ -5,8 +5,8 @@
 
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Dependencies](https://img.shields.io/badge/dependencies-mdown%20%28self--built%29-blue)
-![Tests](https://img.shields.io/badge/tests-13%20passing-success)
+![Dependencies](https://img.shields.io/badge/dependencies-0-blue)
+![Tests](https://img.shields.io/badge/tests-23%20passing-success)
 
 ## ✨ 特性
 
@@ -16,7 +16,8 @@
 - 🎨 **双主题**:`--theme dark` / `light`,自包含 CSS,单文件页面
 - 📄 **自动目录页**:没有 `index.md` 时自动生成站点目录
 - 🚫 **约定排除**:`.` / `_` 前缀文件与输出目录自身不参与构建
-- 🧹 **`--clean`**:构建前清空输出目录,不留陈旧文件
+- 🧹 **`--clean`**:全部页面转换成功后清空输出目录,不留陈旧文件
+- 🛡 **安全边界**:拒绝把源目录或其祖先作为输出;站点名与标题按 HTML 上下文转义
 - 📤 **`--json`**:构建报告结构化输出,方便接入脚本
 
 ## 📦 安装
@@ -24,10 +25,12 @@
 ```bash
 git clone https://github.com/JAKE1266/msite.git
 cd msite
+pip install .
 python -m msite --help
-
-pip install .    # 会同时安装同系列依赖 mdown(纯标准库实现)
 ```
+
+转换内核为同系列 [mdown](https://github.com/JAKE1266/mdown) 1.0.1,已私有化内嵌;
+安装与运行不需要 Git,也没有第三方运行时依赖。
 
 ## 🚀 快速上手
 
@@ -63,22 +66,21 @@ msite [源目录] [选项]
 
 ```
 msite/
-├── .github/workflows/ci.yml   # CI:三系统 × Python 3.9-3.13(构建本 README 冒烟)
+├── .github/workflows/ci.yml   # CI:构建 + 三系统 × 四版本真实 wheel 测试
 ├── src/msite/
-│   ├── core/builder.py        # 扫描 / 转换(mdown)/ 导航 / 链接重写 / 主题
+│   ├── _vendor/mdown/         # 私有内嵌 mdown 1.0.1
+│   ├── core/builder.py        # 扫描 / 转换 / 导航 / 链接重写 / 主题
 │   └── cli.py                 # 命令行入口
-├── tests/                     # 13 个端到端测试(临时目录真实构建)
+├── tests/                     # 23 项测试 + 已安装 wheel 冒烟
 └── pyproject.toml
 ```
 
 ## 🧪 开发与测试
 
 ```bash
-PYTHONPATH="src;../mdown/src" python -m unittest discover -s tests -v
+python -m pip install -e .
+python -m unittest discover -s tests -v
 ```
-
-> 测试依赖同系列 [mdown](https://github.com/JAKE1266/mdown);单独克隆本仓库时,
-> 请把它放到与 `msite` 平级的目录,或 `pip install` 后运行。
 
 ## 🗺 路线图
 

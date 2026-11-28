@@ -108,7 +108,7 @@ def _page(fragment: str, nav: str, theme: str, title: str) -> str:
     return (
         "<!doctype html>\n<html lang=\"zh-CN\">\n<head>\n<meta charset=\"utf-8\">\n"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
-        f"<title>{title}</title>\n<style>{css}</style>\n"
+        f"<title>{html.escape(title)}</title>\n<style>{css}</style>\n"
         f"</head>\n<body>\n{nav}\n<main>\n{fragment}\n</main>\n</body>\n</html>\n"
     )
 
@@ -134,12 +134,16 @@ def build_site(source, out: str = "site", theme: str = "dark",
     """
     if theme not in _themes():
         raise ValueError(f"主题只能是 dark/light:{theme!r}")
-    source = Path(source)
+    source = Path(source).resolve()
     if not source.is_dir():
         raise NotADirectoryError(f"源目录不存在或不是文件夹:{source}")
-    out_dir = Path(out)
-    if clean and out_dir.exists():
-        shutil.rmtree(out_dir)
+    out_dir = Path(out).resolve()
+    if out_dir == source:
+        raise ValueError("输出目录不能与源目录相同")
+    if source.is_relative_to(out_dir):
+        raise ValueError("输出目录不能是源目录的祖先")
+    if out_dir.exists() and not out_dir.is_dir():
+        raise NotADirectoryError(f"输出路径不是文件夹:{out_dir}")
 
     pages = _collect_md_files(source, out_dir)
     if not pages:
@@ -154,6 +158,8 @@ def build_site(source, out: str = "site", theme: str = "dark",
         fragments[rel.as_posix()] = fragment
         titles[rel.as_posix()] = _first_title(fragment, rel.stem)
 
+    if clean and out_dir.exists():
+        shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     written: list = []
     for rel in pages:
